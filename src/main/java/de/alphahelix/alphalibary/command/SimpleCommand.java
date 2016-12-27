@@ -26,24 +26,21 @@ import java.util.List;
  *     You should have received a copy of the GNU General Public License
  *     along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-public abstract class SimpleCommand<P extends AlphaPlugin, R> extends Command {
+public abstract class SimpleCommand<P extends AlphaPlugin> extends Command {
 
     private final P plugin;
-    private final R register;
 
     /**
      * Creates a new {@link SimpleCommand} to not manually implement the Command inside the plugin.yml
      *
      * @param plugin      the {@link AlphaPlugin} to register the {@link SimpleCommand} on
-     * @param register    the Register class of your plugin, can also be your Main class
      * @param command     the command name
      * @param description the description which should be printed out at '/help commandName'
      * @param aliases     the aliases which can be used to run the command as well
      */
-    public SimpleCommand(P plugin, R register, String command, String description, String... aliases) {
+    public SimpleCommand(P plugin, String command, String description, String... aliases) {
         super(command);
         this.plugin = plugin;
-        this.register = register;
 
         super.setDescription(description);
         List<String> aliasList = new ArrayList<>();
@@ -104,14 +101,4 @@ public abstract class SimpleCommand<P extends AlphaPlugin, R> extends Command {
     public P getPlugin() {
         return this.plugin;
     }
-
-    /**
-     * Gets the register
-     *
-     * @return the defined register
-     */
-    public R getRegister() {
-        return register;
-    }
-
 }

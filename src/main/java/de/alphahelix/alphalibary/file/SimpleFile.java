@@ -16,6 +16,7 @@
 package de.alphahelix.alphalibary.file;
 
 import de.alphahelix.alphalibary.AlphaPlugin;
+import de.alphahelix.alphalibary.item.ItemBuilder;
 import de.alphahelix.alphalibary.utils.SerializationUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -161,17 +162,27 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
         }
     }
 
+    public String getPlaceholderString(String path, String placeHolder, String placeHolderObject) {
+        if(!configContains(path)) return "";
+        if(!isString(path)) return "";
+
+        return getColorString(path).replace("["+placeHolder+"]", placeHolderObject);
+    }
+
     /**
      * Save a base64 encoded {@link ItemStack}[] inside this {@link SimpleFile}
      *
      * @param path   where to save the {@link ItemStack}[]
      * @param toSave the {@link ItemStack}[] to save
      */
-    public void setItemStackArray(String path, ItemStack... toSave) {
+    public void setBase64ItemStackArray(String path, ItemStack... toSave) {
         SerializationUtil<ItemStack[]> serializer = new SerializationUtil<ItemStack[]>();
 
-        set(path, SerializationUtil.jsonToString(serializer.serialize(toSave)));
-        save();
+        if (configContains(path)) {
+            override(path, SerializationUtil.jsonToString(serializer.serialize(toSave)));
+        } else {
+            setDefault(path, SerializationUtil.jsonToString(serializer.serialize(toSave)));
+        }
     }
 
     /**
@@ -180,10 +191,83 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
      * @param path where the {@link ItemStack}[] should be located at
      * @return the {@link ItemStack}[] which was saved
      */
-    public ItemStack[] getItemStackArray(String path) {
+    public ItemStack[] getBase64ItemStackArray(String path) {
         SerializationUtil<ItemStack[]> serializer = new SerializationUtil<ItemStack[]>();
 
         return serializer.deserialize(SerializationUtil.stringToJson(getString(path)));
+    }
+
+    /**
+     * Save a {@link ItemStack}[] inside this {@link SimpleFile}
+     *
+     * @param path   where to save the {@link ItemStack}[]
+     * @param toSave the {@link ItemStack}[] to save
+     */
+    public void setItemStackArray(String path, ItemStack... toSave) {
+        if (configContains(path)) {
+            for (ItemStack is : toSave) {
+                int keys = getConfigurationSection(path).getKeys(false).size();
+                override(path + "." + keys + ".type", is.getType().name().toLowerCase().replace("_", " "));
+                if (is.hasItemMeta()) {
+                    if (is.getItemMeta().hasDisplayName()) {
+                        override(path + "." + keys + ".name", is.getItemMeta().getDisplayName());
+                    } else {
+                        override(path + "." + keys + ".name", is.getType().name().toLowerCase().replace("_", " "));
+                    }
+                    if (is.getItemMeta().hasLore()) {
+                        setArgumentList(path + "." + keys + ".lore", is.getItemMeta().getLore().toArray(new String[is.getItemMeta().getLore().size()]));
+                    } else {
+                        setArgumentList(path + "." + keys + ".lore", "");
+                    }
+                } else {
+                    override(path + "." + keys + ".name", is.getType().name().toLowerCase().replace("_", " "));
+                    setArgumentList(path + "." + keys + ".lore", "");
+                }
+            }
+        } else {
+            int keys = 0;
+            for (ItemStack is : toSave) {
+                setDefault(path + "." + keys + ".type", is.getType().name().toLowerCase().replace("_", " "));
+                if (is.hasItemMeta()) {
+                    if (is.getItemMeta().hasDisplayName()) {
+                        setDefault(path + "." + keys + ".name", is.getItemMeta().getDisplayName());
+                    } else {
+                        setDefault(path + "." + keys + ".name", is.getType().name().toLowerCase().replace("_", " "));
+                    }
+                    if (is.getItemMeta().hasLore()) {
+                        setArgumentList(path + "." + keys + ".lore", is.getItemMeta().getLore().toArray(new String[is.getItemMeta().getLore().size()]));
+                    } else {
+                        setArgumentList(path + "." + keys + ".lore", "");
+                    }
+                } else {
+                    setDefault(path + "." + keys + ".name", is.getType().name().toLowerCase().replace("_", " "));
+                    setArgumentList(path + "." + keys + ".lore", "");
+                }
+                keys++;
+            }
+        }
+    }
+
+    /**
+     * Gets a {@link ItemStack}[] out of this {@link SimpleFile}
+     *
+     * @param path where the {@link ItemStack}[] should be located at
+     * @return the {@link ItemStack}[] which was saved
+     */
+    public ItemStack[] getItemStackArray(String path) {
+        if (configContains(path)) {
+            ArrayList<ItemStack> items = new ArrayList<>();
+            for (int key = 0; key < getConfigurationSection(path).getKeys(false).size(); key++) {
+                items.add(new ItemBuilder(
+                        Material.getMaterial(getString(path + "." + key + ".type").toUpperCase().replace(" ", "_")))
+                        .setName(getColorString(path + "." + key + ".name"))
+                        .setLore(getColorStringList(path + "." + key + ".lore").toArray(new String[getColorStringList(path + "." + key + ".lore").size()]))
+                        .build()
+                );
+            }
+            return items.toArray(new ItemStack[items.size()]);
+        }
+        return new ItemStack[0];
     }
 
     /**
@@ -215,11 +299,16 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
      * @param path   where to save the {@link Inventory}
      * @param toSave the {@link Inventory} to save
      */
-    public void setInventory(String path, Inventory toSave) {
-        set(path + ".title", toSave.getTitle());
-        set(path + ".size", toSave.getSize());
-        setItemStackArray(path + ".content", toSave.getContents());
-        save();
+    public void setBase64Inventory(String path, Inventory toSave) {
+        if (configContains(path)) {
+            override(path + ".title", toSave.getTitle());
+            override(path + ".size", ((toSave.getSize() / 9) + 1) * 9);
+            setBase64ItemStackArray(path + ".content", toSave.getContents());
+        } else {
+            setDefault(path + ".title", toSave.getTitle());
+            setDefault(path + ".size", ((toSave.getSize() / 9) + 1) * 9);
+            setBase64ItemStackArray(path + ".content", toSave.getContents());
+        }
     }
 
     /**
@@ -228,15 +317,30 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
      * @param path where the {@link Inventory} is located at
      * @return the {@link Inventory}
      */
-    public Inventory getInventory(String path) {
+    public Inventory getBase64Inventory(String path) {
         Inventory toReturn = Bukkit.createInventory(null, getInt(path + ".size"), getColorString(path + ".title"));
 
-        for (ItemStack is : getItemStackArray(path + ".content")) {
+        for (ItemStack is : getBase64ItemStackArray(path + ".content")) {
             if (is != null && is.getType() != Material.AIR)
                 toReturn.addItem(is);
         }
 
         return toReturn;
+    }
+
+    public void setMaterial(String path, Material material) {
+        if(configContains(path)) {
+            override(path, material.name().replace("_", " ").toUpperCase());
+        } else {
+            setDefault(path, material.name().replace("_", " ").toUpperCase());
+        }
+    }
+
+    public Material getMaterial(String path) {
+        if(configContains(path)) {
+            return Material.getMaterial(getString(path).replace(" ", "_").toUpperCase());
+        }
+        return Material.AIR;
     }
 
     /**
@@ -264,7 +368,7 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
         return (Location) serializer.deserialize(SerializationUtil.stringToJson(getString(path)));
     }
 
-    public <T> void setArgumentList(String path, T... listArguments) {
+    public <T> void setBase64ArgumentList(String path, T... listArguments) {
         List<String> argsAtBase64 = new ArrayList<>();
         SerializationUtil<T> serializer = new SerializationUtil<>();
 
@@ -278,7 +382,7 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
             setDefault(path, argsAtBase64);
     }
 
-    public <T> ArrayList<T> getArgumentList(String path) {
+    public <T> ArrayList<T> getBase64ArgumentList(String path) {
         ArrayList<T> args = new ArrayList<>();
         SerializationUtil<T> serializer = new SerializationUtil<>();
 
@@ -290,18 +394,18 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
         return args;
     }
 
-    public <T> void addArgumentsToList(String path, T... arguments) {
-        ArrayList<T> args = getArgumentList(path);
+    public <T> void addBase64ArgumentsToList(String path, T... arguments) {
+        ArrayList<T> args = getBase64ArgumentList(path);
 
         for (T arg : arguments) {
             args.add(arg);
         }
 
-        setArgumentList(path, args.toArray());
+        setBase64ArgumentList(path, args.toArray());
     }
 
-    public <T> void removeArgumentsFromList(String path, T... arguments) {
-        ArrayList<T> args = getArgumentList(path);
+    public <T> void removeBase64ArgumentsFromList(String path, T... arguments) {
+        ArrayList<T> args = getBase64ArgumentList(path);
 
         for (T arg : arguments) {
             if (args.contains(arg))
@@ -309,7 +413,44 @@ public class SimpleFile<P extends AlphaPlugin> extends YamlConfiguration {
         }
 
         if (!args.isEmpty())
-            setArgumentList(path, args.toArray());
+            setBase64ArgumentList(path, args.toArray());
+        else
+            override(path, null);
+    }
+
+    public void setArgumentList(String path, String... listArguments) {
+        List<String> args = new ArrayList<>();
+
+        for (String arg : listArguments) {
+            args.add(arg);
+        }
+
+        if (configContains(path))
+            override(path, args);
+        else
+            setDefault(path, args);
+    }
+
+    public void addArgumentsToList(String path, String... arguments) {
+        List<String> args = getStringList(path);
+
+        for (String arg : arguments) {
+            args.add(arg);
+        }
+
+        setArgumentList(path, args.toArray(new String[args.size()]));
+    }
+
+    public void removeArgumentsFromList(String path, String... arguments) {
+        List<String> args = getStringList(path);
+
+        for (String arg : arguments) {
+            if (args.contains(arg))
+                args.remove(arg);
+        }
+
+        if (!args.isEmpty())
+            setArgumentList(path, args.toArray(new String[args.size()]));
         else
             override(path, null);
     }

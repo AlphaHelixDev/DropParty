@@ -22,14 +22,12 @@ import org.bukkit.scheduler.BukkitRunnable;
 import java.util.*;
 import java.util.logging.Logger;
 
-public class Util<P extends AlphaPlugin, R> {
+public class Util<P extends AlphaPlugin> {
 
     private P pl;
-    private R register;
 
-    public Util(P plugin, R register) {
+    public Util(P plugin) {
         setPluginInstance(plugin);
-        setRegister(register);
     }
 
     public P getPluginInstance() {
@@ -42,14 +40,6 @@ public class Util<P extends AlphaPlugin, R> {
 
     public Logger getLog() {
         return Bukkit.getLogger();
-    }
-
-    public R getRegister() {
-        return register;
-    }
-
-    public void setRegister(R register) {
-        this.register = register;
     }
 
     public double round(double value, int precision) {

@@ -20,16 +20,15 @@ import de.alphahelix.alphalibary.utils.Util;
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 
-public class SimpleListener<P extends AlphaPlugin, R> extends Util<P, R> implements Listener {
+public class SimpleListener<P extends AlphaPlugin> extends Util<P> implements Listener {
 
     /**
      * Automatic registering {@link Listener}
      *
      * @param plugin the {@link AlphaPlugin} to register the {@link SimpleListener} on
-     * @param register the register of your project
      */
-    public SimpleListener(P plugin, R register) {
-        super(plugin, register);
+    public SimpleListener(P plugin) {
+        super(plugin);
         Bukkit.getPluginManager().registerEvents(this, getPluginInstance());
     }
 }
